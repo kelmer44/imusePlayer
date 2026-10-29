@@ -61,7 +61,7 @@ tasks.register<JavaExec>("songdump") {
     mainClass.set("adventureexplorer.woodtick.SongDumpKt")
 }
 
-// ./gradlew woodtickshot --args="/path/to/MONKEY2 out.png laundry"
+// README screenshots: ./gradlew woodtickshot --args="/path/to/MONKEY2 docs/screenshots"
 tasks.register<JavaExec>("woodtickshot") {
     group = "application"
     classpath = sourceSets["main"].runtimeClasspath

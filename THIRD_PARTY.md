@@ -42,6 +42,7 @@ Apache-2.0 is compatible with GPL version 3, which is why the project is GPL-3.0
 ## Not covered by the GPL
 
 - **Game data.** None of Monkey Island 2's files are included. The program reads the player's own copy.
+- **Screenshots.** The README screenshots show room pictures rendered from the game files, for illustration only.
 - **Names and artwork.** *Monkey Island*, *LucasArts* and the logo used as the application icon belong to their
   respective owners. The icon is not part of the GPL-licensed work and is shown only to identify the game's era;
   replace it before any public release.

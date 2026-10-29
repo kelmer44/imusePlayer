@@ -1,12 +1,40 @@
 # Monkey Island 2 Music Explorer
 
-A small app on top of Adventure Explorer's iMUSE sequencer and Nuked OPL emulator. It shows the
+A small app on top of ScummVM-derived iMUSE code and the Nuked OPL emulator, ported to Kotlin. It shows the
 Woodtick rooms of *Monkey Island 2* as a map; click a connected room and the music changes
 the way the game's own scripts change it (wait for the next marker, take the hook to the ending
 track, start the next song). It reads your own game files, so none are shipped.
 
 Scenes are switched with the pills under the title. **Woodtick** rooms: `woodtick`, `cartograp`, `bar`, `grill`, `inn`, `largos`, `laundry`, `woodshop`.
 Needs the **AdLib (DOS)** version, i.e. `MONKEY2.000` + `MONKEY2.001` with `ADL ` music.
+
+## Screenshots
+
+**Woodtick.** Walking from the street to the cartographer: the street song waits for its next marker, jumps to its
+ending, and the cartographer's song starts as the ending plays out. The panel on the right shows what the player is
+waiting for.
+
+![Woodtick: a transition in progress](docs/screenshots/woodtick-transition.png)
+
+**The laundry.** "Talk to Men of Low Moral Fiber" (or the small *Talk* button on the picture) fades in the conversation
+layer, as the game's laundry script does.
+
+![Woodtick laundry with the talking layer on](docs/screenshots/woodtick-laundry.png)
+
+**Booty Island.** Ville, Spitville and the shops share one song; walking into a shop only changes which instrument
+parts play.
+
+![Booty Island: the antique shop mix](docs/screenshots/booty-island.png)
+
+**The swamp.** Drag along the swamp, or let the character walk. Instruments join at the coffin, further along, at
+the skull, and inside the voodoo hut.
+
+![The swamp, walked all the way into the voodoo hut](docs/screenshots/swamp.png)
+
+*The room pictures are taken from the game files on the author's machine, for illustration. They belong to their
+owners (see `THIRD_PARTY.md`).*
+
+## Running it
 
 ```bash
 ./gradlew runWoodtick -Pgame="/path/to/MONKEY2"      # run from source (game folder optional)

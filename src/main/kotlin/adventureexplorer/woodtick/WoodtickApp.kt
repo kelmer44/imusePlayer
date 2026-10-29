@@ -104,8 +104,8 @@ fun WoodtickApp(initialPath: String? = null) {
         )
     }
 
-    MaterialTheme(colors = darkColors(primary = Rum, background = Night, surface = Panel, onSurface = Ink, onBackground = Ink)) {
-        Box(Modifier.fillMaxSize().background(Night)) {
+    AppFrame {
+        run {
             when (val s = screen) {
                 Screen.Setup -> Message("Monkey Island 2 Music Explorer", "Choose your Monkey Island 2 folder (the one with MONKEY2.000 and MONKEY2.001). The game files stay on your computer; nothing is copied.") {
                     ChooseFolderButton(gamePath) { gamePath = it; loadRequest = it }
@@ -117,6 +117,14 @@ fun WoodtickApp(initialPath: String? = null) {
                 is Screen.Ready -> Explorer(s.assets, s.engine, gamePath.orEmpty(), changeGame = { gamePath = it; loadRequest = it })
             }
         }
+    }
+}
+
+/** The app's dark theme and background, shared with the screenshot tool. */
+@Composable
+internal fun AppFrame(content: @Composable () -> Unit) {
+    MaterialTheme(colors = darkColors(primary = Rum, background = Night, surface = Panel, onSurface = Ink, onBackground = Ink)) {
+        Box(Modifier.fillMaxSize().background(Night)) { content() }
     }
 }
 
@@ -153,11 +161,11 @@ private fun ChooseFolderButton(current: String?, onChosen: (String) -> Unit) {
 @Composable
 internal fun Explorer(
     assets: Mi2Assets, engine: WoodtickEngine, path: String,
-    startScene: Scene = Scenes.all.first(), startAt: Room? = null, startX: Float = 0f, changeGame: (String) -> Unit = {},
+    startScene: Scene = Scenes.all.first(), startAt: Room? = null, startX: Float = 0f, startToggleOn: Boolean = false, changeGame: (String) -> Unit = {},
 ) {
     var scene by remember { mutableStateOf(startScene) }
     var current by remember { mutableStateOf(startAt) }
-    var activeToggle by remember { mutableStateOf<Toggle?>(null) }
+    var activeToggle by remember { mutableStateOf(if (startToggleOn) startScene.toggles.firstOrNull { it.roomKey == startAt?.key } else null) }
     var state by remember { mutableStateOf(engine.state) }
     var posX by remember { mutableStateOf(startX) }
     var walking by remember { mutableStateOf(0) }

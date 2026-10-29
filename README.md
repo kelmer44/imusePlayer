@@ -78,3 +78,15 @@ transition on the real songs without audio.
 - Cartographer's first-visit variation (hook 3 / part 3 hook, gated on story flags).
 - The inn's part 1 / part 3 morph (script 151) when you walk to Largo's room.
 - Only the AdLib (OPL) renderer; no MT-32 / MIDI output.
+
+## Licence
+
+Copyright (C) 2026 gsanmartin and contributors.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See `LICENSE`.
+
+It is built on ScummVM's iMUSE and AdLib code and on Nuked OPL3; see `THIRD_PARTY.md` for the full list and the
+licences of the libraries. The game's data files are not included.

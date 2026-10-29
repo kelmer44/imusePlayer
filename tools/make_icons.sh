@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 gsanmartin and contributors. Part of MI2 Music Explorer; see LICENSE and THIRD_PARTY.md.
 # Build the app icons (macOS .icns, Windows .ico, window .png) from one square-ish source image.
 # usage: tools/make_icons.sh path/to/logo.png [output-dir]   (default output: src/main/resources/icons, as "fedora.*")
 # Needs macOS (sips, iconutil) and python3.

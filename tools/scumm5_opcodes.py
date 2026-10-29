@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 gsanmartin and contributors. Part of MI2 Music Explorer; see LICENSE and THIRD_PARTY.md.
+# Derived from ScummVM engines/scumm/script_v5.cpp (GPL-2.0-or-later); (C) the ScummVM Team.
 """Generated from ScummVM engines/scumm/script_v5.cpp setupOpcodes()."""
 OPCODES = {
     0x00: 'stopObjectCode',

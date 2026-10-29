@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 gsanmartin and contributors. Part of MI2 Music Explorer; see LICENSE and THIRD_PARTY.md.
 package adventureexplorer.woodtick
 
 /** A room on a scene's map: the SCUMM room number, the song it plays, where you can go from it. */

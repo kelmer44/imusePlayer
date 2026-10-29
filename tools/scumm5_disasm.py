@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 gsanmartin and contributors. Part of MI2 Music Explorer; see LICENSE and THIRD_PARTY.md.
+# Operand layouts follow ScummVM engines/scumm/script_v5.cpp (GPL-2.0-or-later); (C) the ScummVM Team.
 """Minimal SCUMM v5 script scanner for Monkey Island 2 (dev tool, not used at runtime).
 
 Decodes the v5 opcode stream just far enough to stay in sync and reports every

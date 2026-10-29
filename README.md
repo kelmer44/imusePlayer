@@ -79,6 +79,13 @@ transition on the real songs without audio.
 - The inn's part 1 / part 3 morph (script 151) when you walk to Largo's room.
 - Only the AdLib (OPL) renderer; no MT-32 / MIDI output.
 
+## Downloads
+
+Every commit to the main branch builds the installers and publishes them on the **Latest** release
+(`.github/workflows/release.yml`): `MI2-Music-Explorer-macos-arm64.dmg` (Apple Silicon) and
+`MI2-Music-Explorer-windows.msi`. The `latest` tag always points at the commit they were built from. The installers
+are not code-signed, so macOS and Windows warn on first launch.
+
 ## Licence
 
 Copyright (C) 2026 gsanmartin and contributors.

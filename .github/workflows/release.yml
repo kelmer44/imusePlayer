@@ -1,28 +1,24 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# When a release is published, build the installers (macOS .dmg, Windows .msi), attach them to that release, and
-# move the `latest` tag and the "Latest" release to the same build, with download names that never change.
-name: Release
+# Every commit pushed to the main branch builds the installers (macOS .dmg, Windows .msi) and publishes them on
+# the "Latest" release, whose `latest` tag is moved to that commit. Download names never change, so links keep working.
+name: Publish latest
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main, master]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing release tag to (re)build and publish as latest, e.g. v1.2.0"
-        required: true
 
 permissions:
   contents: write
 
-env:
-  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+# One publish at a time; if several commits arrive, only the newest waits its turn.
+concurrency:
+  group: publish-latest
+  cancel-in-progress: false
 
 jobs:
   build:
-    # The "latest" release is created by this workflow; never build it again.
-    if: github.event.release.tag_name != 'latest'
     strategy:
       fail-fast: false
       matrix:
@@ -30,18 +26,16 @@ jobs:
           - os: macos-latest        # Apple Silicon
             task: packageDmg
             pattern: "build/compose/binaries/main/dmg/*.dmg"
+            out: MI2-Music-Explorer-macos-arm64.dmg
             platform: macos-arm64
-            ext: dmg
           - os: windows-latest      # WiX is preinstalled on the runner
             task: packageMsi
             pattern: "build/compose/binaries/main/msi/*.msi"
+            out: MI2-Music-Explorer-windows.msi
             platform: windows
-            ext: msi
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
 
       - uses: actions/setup-java@v4
         with:
@@ -50,29 +44,18 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Work out the installer version
-        id: version
-        shell: bash
-        run: |
-          V="${TAG#v}"
-          # jpackage wants MAJOR.MINOR.PATCH with MAJOR > 0 on macOS
-          if [[ ! "$V" =~ ^[1-9][0-9]*\.[0-9]+\.[0-9]+$ ]]; then V=1.0.0; fi
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-
       - name: Package
         shell: bash
-        run: ./gradlew ${{ matrix.task }} -PappVersion=${{ steps.version.outputs.version }} --no-daemon
+        # jpackage wants MAJOR.MINOR.PATCH with MAJOR > 0 on macOS; the run number makes every build's version distinct.
+        run: ./gradlew ${{ matrix.task }} -PappVersion=1.0.${{ github.run_number }} --no-daemon
 
       - name: Name the installer
-        id: file
         shell: bash
         run: |
           set -euo pipefail
           src=$(ls ${{ matrix.pattern }} | head -n 1)
-          out="MI2-Music-Explorer-${TAG#v}-${{ matrix.platform }}.${{ matrix.ext }}"
           mkdir -p dist
-          cp "$src" "dist/$out"
-          echo "name=$out" >> "$GITHUB_OUTPUT"
+          cp "$src" "dist/${{ matrix.out }}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -85,8 +68,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -94,26 +75,20 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Attach the installers to the release
+      - name: Move the latest tag and replace the Latest release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" dist/* --clobber
-
-      - name: Move the latest tag and release
-        env:
-          GH_TOKEN: ${{ github.token }}
+          MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
-          # Same files under names that never change, so download links keep working.
-          mkdir -p latest
-          for f in dist/*; do
-            n=$(basename "$f")
-            cp "$f" "latest/$(echo "$n" | sed -E "s/-${TAG#v}-/-/")"
-          done
-          git tag -f latest "$(git rev-parse HEAD)"
+          short=$(git rev-parse --short HEAD)
+          git tag -f latest "$GITHUB_SHA"
           git push -f origin refs/tags/latest
           gh release delete latest --yes 2>/dev/null || true
-          gh release create latest latest/* \
-            --title "Latest ($TAG)" \
-            --notes "Most recent build, from release $TAG ($(git rev-parse --short HEAD)). Stable download names; see $TAG for the versioned files." \
-            --latest=false
+          gh release create latest dist/* \
+            --title "Latest ($short)" \
+            --notes "Built from commit $short on $GITHUB_REF_NAME (build ${{ github.run_number }}).
+
+          ${MESSAGE:-Manual run}
+
+          Installers are not code-signed, so macOS and Windows will warn the first time you open them."

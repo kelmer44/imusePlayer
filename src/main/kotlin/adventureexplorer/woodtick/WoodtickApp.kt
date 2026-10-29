@@ -242,25 +242,32 @@ private fun ScrubView(
     onX: (Float) -> Unit, onWalk: (Int) -> Unit, modifier: Modifier,
 ) {
     Column(modifier.clip(RoundedCornerShape(10.dp)).background(Panel).border(1.dp, Rule, RoundedCornerShape(10.dp)).padding(16.dp)) {
-        BoxWithConstraints(
-            Modifier.fillMaxWidth().aspectRatio(image.width.toFloat() / image.height).clip(RoundedCornerShape(8.dp)).border(1.dp, Rule, RoundedCornerShape(8.dp))
-                .pointerInput(scrub) { detectTapGestures { onX(it.x / size.width * scrub.width) } }
-                .pointerInput(scrub) { detectHorizontalDragGestures { change, _ -> onX(change.position.x / size.width * scrub.width) } },
-        ) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
             val w = maxWidth
-            Image(image, "Swamp", contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
-            for ((i, mark) in scrub.marks.withIndex()) {
-                val (mx, label) = mark
-                Box(Modifier.offset(x = w * (mx.toFloat() / scrub.width)).width(2.dp).fillMaxHeight().background(Rum.copy(alpha = 0.8f)))
-                Text(
-                    "X $mx · $label", color = Rum, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                    // Stagger neighbouring labels so they do not overlap
-                    modifier = Modifier.offset(x = w * (mx.toFloat() / scrub.width) + 6.dp, y = 6.dp + 22.dp * (i % 2)).background(Night.copy(alpha = 0.7f)).padding(horizontal = 4.dp, vertical = 1.dp),
-                )
+            val strip = 22.dp * 3 + 4.dp
+            // Labels sit above the picture, in three staggered rows, so a wide panorama never crowds or clips them.
+            Box(Modifier.fillMaxWidth().height(strip)) {
+                for ((i, mark) in scrub.marks.withIndex()) {
+                    val (mx, label) = mark
+                    Text(
+                        label, color = Rum, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                        modifier = Modifier.offset(x = (w * (mx.toFloat() / scrub.width) + 3.dp).coerceAtMost(w - 190.dp).coerceAtLeast(0.dp), y = 22.dp * (i % 3)),
+                    )
+                }
             }
-            // The character: a marker that follows the position
-            Box(Modifier.offset(x = w * (x / scrub.width) - 1.dp).width(3.dp).fillMaxHeight().background(Lagoon))
-            Box(Modifier.align(Alignment.BottomStart).offset(x = w * (x / scrub.width) - 8.dp, y = (-8).dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Lagoon).border(2.dp, Night, RoundedCornerShape(8.dp)))
+            Box(
+                Modifier.padding(top = strip).fillMaxWidth().aspectRatio(image.width.toFloat() / image.height).clip(RoundedCornerShape(8.dp)).border(1.dp, Rule, RoundedCornerShape(8.dp))
+                    .pointerInput(scrub) { detectTapGestures { onX(it.x / size.width * scrub.width) } }
+                    .pointerInput(scrub) { detectHorizontalDragGestures { change, _ -> onX(change.position.x / size.width * scrub.width) } },
+            ) {
+                Image(image, "Swamp", contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
+                for ((mx, _) in scrub.marks) {
+                    Box(Modifier.offset(x = w * (mx.toFloat() / scrub.width)).width(2.dp).fillMaxHeight().background(Rum.copy(alpha = 0.8f)))
+                }
+                // The character: a marker that follows the position
+                Box(Modifier.offset(x = w * (x / scrub.width) - 1.dp).width(3.dp).fillMaxHeight().background(Lagoon))
+                Box(Modifier.align(Alignment.BottomStart).offset(x = w * (x / scrub.width) - 8.dp, y = (-8).dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Lagoon).border(2.dp, Night, RoundedCornerShape(8.dp)))
+            }
         }
         Spacer(Modifier.height(12.dp))
         Slider(

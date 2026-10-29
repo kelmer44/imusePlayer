@@ -38,13 +38,26 @@ object Mi2Loader {
                 // The street's composite shows unplaced door objects as magenta patches; its plain background is cleaner.
                 val ids = if (room.key == "woodtick") listOf("bg", "comp") else listOf("comp", "bg")
                 val data = ids.firstNotNullOfOrNull { mgr.loadResource(path, "$it:$base:${room.scummRoom}") }
-                val image = data?.image ?: error("Room ${room.scummRoom} (${room.title}) has no picture")
+                var image = data?.image ?: error("Room ${room.scummRoom} (${room.title}) has no picture")
+                for (extra in room.appended) {
+                    val more = listOf("comp", "bg").firstNotNullOfOrNull { mgr.loadResource(path, "$it:$base:$extra") }?.image
+                        ?: error("Room $extra has no picture")
+                    image = joinRight(image, more)
+                }
                 images[room.key] = image
             }
             return Mi2Assets(songs, images)
         } finally {
             mgr.close()
         }
+    }
+
+    /** [a] with [b] attached to its right edge, on one canvas as tall as the taller of the two. */
+    private fun joinRight(a: BufferedImage, b: BufferedImage): BufferedImage {
+        val out = BufferedImage(a.width + b.width, maxOf(a.height, b.height), BufferedImage.TYPE_INT_ARGB)
+        val g = out.createGraphics()
+        try { g.drawImage(a, 0, 0, null); g.drawImage(b, a.width, 0, null) } finally { g.dispose() }
+        return out
     }
 
     /** The game's resource prefix (`MONKEY2`), taken from the first room id. */

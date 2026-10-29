@@ -38,9 +38,16 @@ scripts layer them in as you walk right (the room is 792 px wide):
 | X 470 | 2 | local script 216 (goes off again at 470 and below) |
 | X 640, the skull's mouth | 0, the lead | room 21's entry script (its exit script switches it off) |
 
+| X 1002 (hut X 210) | 9, 10, 6 (and 0, 11, 12 forced on) | the voodoo hut's local script 212, every frame: past hut X 210 all six are on, at 210 or less 9, 10 and 6 go off again |
+
+The walk continues into the voodoo hut (room 21, 456 px wide), whose picture is attached to the right of the swamp's
+at X 792. The same song carries on inside: the swamp's exit script only fades it out when the next room is *not* 21,
+and the hut's entry script (part 0 on) and script 212 then keep layering parts into it. Leaving the hut switches
+part 0 off again in the game; the scene keeps part 0 tied to the skull threshold instead.
+
 The coffin and the skull are events in the game; the scene turns them into thresholds along the walk, and they are
 easy to move (`Swamp.COFFIN_X`, `SKULL_X`). Parts 11 and 12 are very quiet instruments; parts 2 and 0 are the
-audible steps. Not reproduced: the extra layers of the voodoo hut's own scene (parts 11, 12, 9, 10, 6, script 212 of room 21).
+audible steps. Not reproduced: the voodoo lady's first-visit cutscene (room 21 script 206), which has its own music.
 
 ## What the scripts do (Woodtick) (read with `tools/scumm5_disasm.py`)
 

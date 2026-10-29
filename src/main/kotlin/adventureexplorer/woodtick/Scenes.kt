@@ -9,6 +9,8 @@ data class Room(
     val exits: List<String>,
     /** What the music does here, for the UI. */
     val note: String,
+    /** SCUMM rooms whose pictures are attached to the right of this one (the swamp continues into the voodoo hut). */
+    val appended: List<Int> = emptyList(),
 )
 
 /** A button a room can offer that changes the music without leaving it (e.g. talking to characters). */

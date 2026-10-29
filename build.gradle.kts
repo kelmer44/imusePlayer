@@ -35,9 +35,9 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Woodtick Music Explorer"
+            packageName = "MI2 Music Explorer"
             packageVersion = "1.0.0"
-            description = "Walk around Woodtick (Monkey Island 2) and hear the iMUSE music transitions on an OPL2 AdLib emulation"
+            description = "Walk around Monkey Island 2 scenes and hear the iMUSE music transitions on an OPL2 AdLib emulation"
             modules("java.prefs")
             macOS { iconFile.set(project.file("src/main/resources/icons/fedora.icns")) }
             windows { iconFile.set(project.file("src/main/resources/icons/fedora.ico")) }
@@ -66,4 +66,11 @@ tasks.register<JavaExec>("woodtickshot") {
     group = "application"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("adventureexplorer.woodtick.WoodtickShotKt")
+}
+
+// ./gradlew notecounts --args="/path/to/MONKEY2 110"
+tasks.register<JavaExec>("notecounts") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("adventureexplorer.woodtick.NoteCounts")
 }

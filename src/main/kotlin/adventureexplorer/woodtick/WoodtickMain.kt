@@ -8,14 +8,14 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import javax.swing.UIManager
 
-/** Woodtick Music Explorer. Optional first argument (or MONKEY2_PATH): the Monkey Island 2 folder. */
+/** Monkey Island 2 Music Explorer (Woodtick, Booty Island). Optional first argument (or MONKEY2_PATH): the Monkey Island 2 folder. */
 fun main(args: Array<String>) {
     try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) } catch (_: Exception) {}
     val path = args.firstOrNull() ?: System.getenv("MONKEY2_PATH")
     application {
         Window(
             onCloseRequest = ::exitApplication,
-            title = "Woodtick Music Explorer",
+            title = "Monkey Island 2 Music Explorer",
             icon = painterResource("icons/fedora.png"),
             state = rememberWindowState(size = DpSize(1280.dp, 800.dp)),
         ) {

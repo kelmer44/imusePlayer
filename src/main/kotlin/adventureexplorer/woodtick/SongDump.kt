@@ -22,3 +22,20 @@ fun main(args: Array<String>) {
     }
     mgr.close()
 }
+
+/** Dev tool: notes per MIDI channel for each track of a song. args: <gamePath> <soundId> */
+object NoteCounts {
+    @JvmStatic fun main(args: Array<String>) {
+        val mgr = ScriptManager()
+        mgr.detectGame(args[0])
+        val song = mgr.loadResource(args[0], "snd:MONKEY2:${args[1]}:ADL_")!!.imuse!!
+        for ((i, track) in song.tracks.withIndex()) {
+            val counts = sortedMapOf<Int, Int>()
+            for (e in track) if (e is ImuseSong.Event.Channel && (e.status and 0xF0) == 0x90 && e.data2 > 0) counts.merge(e.status and 0x0F, 1, Int::plus)
+            println("track $i: ${counts.entries.joinToString { "ch${it.key}=${it.value}" }}")
+            if (i == 0) for (e in track) if (e is ImuseSong.Event.Channel && (e.status and 0xF0) == 0xB0 && e.data1 == 7)
+                println("   vol  tick ${e.tick} ch${e.status and 0x0F} = ${e.data2}")
+        }
+        mgr.close()
+    }
+}

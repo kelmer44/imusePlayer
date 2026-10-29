@@ -1,11 +1,11 @@
-# Woodtick Music Explorer
+# Monkey Island 2 Music Explorer
 
 A small app on top of Adventure Explorer's iMUSE sequencer and Nuked OPL emulator. It shows the
 Woodtick rooms of *Monkey Island 2* as a map; click a connected room and the music changes
 the way the game's own scripts change it (wait for the next marker, take the hook to the ending
 track, start the next song). It reads your own game files, so none are shipped.
 
-Rooms: `woodtick`, `cartograp`, `bar`, `grill`, `inn`, `largos`, `laundry`, `woodshop`.
+Scenes are switched with the pills under the title. **Woodtick** rooms: `woodtick`, `cartograp`, `bar`, `grill`, `inn`, `largos`, `laundry`, `woodshop`.
 Needs the **AdLib (DOS)** version, i.e. `MONKEY2.000` + `MONKEY2.001` with `ADL ` music.
 
 ```bash
@@ -14,7 +14,19 @@ Needs the **AdLib (DOS)** version, i.e. `MONKEY2.000` + `MONKEY2.001` with `ADL 
 ./gradlew packageMsi                      # Windows installer (build on Windows, needs WiX)
 ```
 
-## What the scripts do (read with `tools/scumm5_disasm.py`)
+**Booty Island** rooms: `ville` (46), `spitvile` (47), `antique` (48), `costume-s` (49), `funeral-p` (50).
+
+## Booty Island (global scripts 117 and 120)
+
+- Ville, Spitville and both shops share song **118**; the game never restarts it when you walk between them,
+  it only switches instrument parts. Script 120 reads a 90-character `1`/`0` string, 8 characters per group:
+  ville group 3, Spitville 5, antique 9, costume 2 (parts 0-7).
+- The funeral parlor has its own song **116**. Entering cross-fades (1 s fade of 118). Leaving arms jump hook 1
+  on 116, waits for it to play out its ending, then starts 118.
+- Not reproduced: script 120's adaptive layer (it also cycles between songs 114/117/118 and adds layers
+  when you pass objects), and Booty Island's outdoor theme (115) because the island map isn't a scene yet.
+
+## What the scripts do (Woodtick) (read with `tools/scumm5_disasm.py`)
 
 | Room | SCUMM room | Song |
 |---|---|---|

@@ -10,20 +10,11 @@ package adventureexplorer.woodtick
  *   destination song start; see [Woodtick.go].
  * - Laundry local script 225 is the "talk to the characters" layer (parts 3, 9 and 10 fade in).
  */
-object Woodtick {
-    /** A Woodtick room: the SCUMM room number, the song it plays, where you can go from it. */
-    data class Room(
-        val key: String,
-        val scummRoom: Int,
-        val title: String,
-        val song: Int,
-        val exits: List<String>,
-        /** What the music does here, for the UI. */
-        val note: String,
-    )
-
+object Woodtick : Scene {
+    override val key = "woodtick"
+    override val title = "Woodtick"
     // Songs: 101 street, 103 bar & grill, 104 cartographer, 110 laundry, 111 woodshop, 152 inn, 182 Largo's room.
-    val rooms = listOf(
+    override val rooms = listOf(
         Room("woodtick", 7, "Woodtick", 101, listOf("cartograp", "bar", "inn", "laundry", "woodshop"), "Street theme"),
         Room("cartograp", 8, "Cartographer", 104, listOf("woodtick"), "Cartographer theme"),
         Room("bar", 9, "Bar", 103, listOf("woodtick", "grill"), "Bar theme"),
@@ -33,8 +24,25 @@ object Woodtick {
         Room("laundry", 14, "Laundry", 110, listOf("woodtick"), "Laundry theme; talking adds an instrument layer"),
         Room("woodshop", 15, "Woodshop", 111, listOf("woodtick"), "Woodshop theme"),
     )
-    val byKey = rooms.associateBy { it.key }
-    val songIds: List<Int> = rooms.map { it.song }.distinct()
+
+    override val layout = mapOf(
+        "woodtick" to (0.50f to 0.46f),
+        "cartograp" to (0.20f to 0.16f),
+        "woodshop" to (0.80f to 0.16f),
+        "laundry" to (0.13f to 0.60f),
+        "bar" to (0.87f to 0.52f),
+        "grill" to (0.87f to 0.86f),
+        "inn" to (0.50f to 0.86f),
+        "largos" to (0.20f to 0.86f),
+    )
+
+    override val toggles = listOf(
+        Toggle(
+            "laundry", "Talk to the characters", "Stop talking to the characters",
+            "Adds the conversation layer: parts 3, 9 and 10 fade in while part 1 drops, as in the game's laundry script.",
+            start = { talkStart(it) }, stop = { talkEnd(it) },
+        ),
+    )
 
     /** Songs that end by arming jump hook 1: they hit marker 0 every 8 beats, then take the hook to an ending track. */
     private val hookEndSongs = setOf(103, 104, 110, 111, 152)
@@ -46,7 +54,7 @@ object Woodtick {
     private const val STREET_ARRIVAL_HOOK = 7
 
     /** The first thing that plays when the player picks a starting room. */
-    fun enter(e: WoodtickEngine.Engine, room: Room) {
+    override fun enter(e: WoodtickEngine.Engine, room: Room) {
         e.stopAll()
         e.startSound(room.song, hook = if (room.song == STREET) STREET_ARRIVAL_HOOK else 0)
     }
@@ -63,7 +71,7 @@ object Woodtick {
      *
      * Inn and Largo's room cross-fade instead (room 13 scripts: 60-tick volume fade on the old song).
      */
-    fun go(e: WoodtickEngine.Engine, from: Room, to: Room) {
+    override fun go(e: WoodtickEngine.Engine, from: Room, to: Room) {
         if (from.song == to.song) { e.note("${to.title}: keeps playing sound ${to.song}"); return }
         e.clearTriggers()
         val old = from.song

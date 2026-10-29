@@ -351,7 +351,9 @@ class Dis:
             elif s in (2, 3, 4, 5): self.cur.append('+-*/'[s - 2])
             elif s == 6:
                 sub = self.b()
+                self.cur.append('(' + OPCODES[sub])
                 getattr(self, 'o_' + OPCODES[sub], self.o_unknown)(sub)
+                self.cur.append(')')
             else: raise KeyError('expression sub %d' % s)
 
     def o_setClass(self, op):
@@ -433,10 +435,14 @@ class Dis:
     def o_setObjectName(self, op): self.pw(op, 0x80); self.cstring(esc=False)
     def o_stringOps(self, op):
         o = self.b(); s = o & 0x1F
-        if s == 1: self.pb(o, 0x80); self.cstring()
+        if s == 1:
+            sid = self.pb(o, 0x80)
+            start = self.p
+            self.cstring()
+            return ('string', sid, bytes(self.d[start:self.p - 1]).decode('latin1'))
         elif s == 2: self.pb(o, 0x80); self.pb(o, 0x40)
         elif s == 3: self.pb(o, 0x80); self.pb(o, 0x40); self.pb(o, 0x20)
-        elif s == 4: self.var(); self.pb(o, 0x80); self.pb(o, 0x40)
+        elif s == 4: self.cur.append('getChar ->' + self.var()); self.pb(o, 0x80); self.pb(o, 0x40)
         elif s == 5: self.pb(o, 0x80); self.pb(o, 0x40)
         else: raise KeyError('stringOps %d' % s)
 

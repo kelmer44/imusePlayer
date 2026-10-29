@@ -12,9 +12,10 @@ import org.jetbrains.skia.EncodedImageFormat
 @OptIn(ExperimentalComposeUiApi::class)
 fun main(args: Array<String>) {
     val assets = Mi2Loader.load(args[0]) { }
-    val room = args.getOrNull(2)?.let { Woodtick.byKey[it] }
+    val room = Scenes.all.firstNotNullOfOrNull { sc -> args.getOrNull(2)?.let { sc.byKey[it] } }
+    val mapScene = Scenes.all.first { sc -> room == null || room.key in sc.byKey }
     val scene = ImageComposeScene(1280, 800, Density(1f)) {
-        androidx.compose.material.MaterialTheme { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF12100E))) { Explorer(assets, WoodtickEngine(assets.songs), args[0], room) } }
+        androidx.compose.material.MaterialTheme { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF12100E))) { Explorer(assets, WoodtickEngine(assets.songs), args[0], mapScene, room) } }
     }
     scene.render()
     val img = scene.render()

@@ -25,7 +25,7 @@ object Mi2Loader {
             val base = findBaseName(det.resources) ?: error("No rooms found in the game data")
 
             val songs = LinkedHashMap<Int, ImuseSong>()
-            for (id in Woodtick.songIds) {
+            for (id in Scenes.songIds) {
                 progress("Loading song $id…")
                 val song = mgr.loadResource(path, "snd:$base:$id:ADL_")?.imuse
                     ?: error("Sound $id has no AdLib music in this copy of the game (only the AdLib version is supported)")
@@ -33,7 +33,7 @@ object Mi2Loader {
             }
 
             val images = LinkedHashMap<String, BufferedImage>()
-            for (room in Woodtick.rooms) {
+            for (room in Scenes.all.flatMap { it.rooms }) {
                 progress("Loading the ${room.title} picture…")
                 // The street's composite shows unplaced door objects as magenta patches; its plain background is cleaner.
                 val ids = if (room.key == "woodtick") listOf("bg", "comp") else listOf("comp", "bg")

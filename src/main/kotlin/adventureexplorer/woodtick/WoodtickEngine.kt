@@ -45,11 +45,13 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
     }
 
     private class Trigger(val sound: Int, val marker: Int, val label: String, val action: () -> Unit)
+    private class EndTrigger(val sound: Int, val label: String, val action: () -> Unit)
     private class Animation(val durationMs: Double, val step: (Double) -> Unit, var elapsedMs: Double = 0.0)
 
     private val commands = ConcurrentLinkedQueue<() -> Unit>()
     private val voices = mutableListOf<Voice>()
     private val triggers = mutableListOf<Trigger>()
+    private val endTriggers = mutableListOf<EndTrigger>()
     private val animations = mutableListOf<Animation>()
     private val log = ArrayDeque<String>()
     @Volatile private var running = false
@@ -97,7 +99,7 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
 
         fun stopAll() {
             voices.filter { !it.stopped }.forEach { it.stop() }
-            triggers.clear(); animations.clear()
+            triggers.clear(); endTriggers.clear(); animations.clear()
             say("stop all sounds")
         }
 
@@ -136,8 +138,24 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
             triggers += Trigger(sound, marker, label) { Engine().action() }
         }
 
+        /** The game's "wait until sound N is no longer running" loop: run [action] once when it plays to its end. */
+        fun onEnd(sound: Int, label: String, action: Engine.() -> Unit) {
+            endTriggers += EndTrigger(sound, label) { Engine().action() }
+        }
+
         /** `clear_queue`. */
-        fun clearTriggers() { triggers.clear() }
+        fun clearTriggers() { triggers.clear(); endTriggers.clear() }
+
+        /** Run [action] once after [ms] (the scripts' `breakHere` frames). */
+        fun after(ms: Int, action: Engine.() -> Unit) {
+            animations += Animation(ms.toDouble(), { t -> if (t >= 1.0) Engine().action() })
+        }
+
+        /** Turn parts 0-7 and 9 of [sound] on or off so that exactly those in [on] play (the game's part-mask strings). */
+        fun applyParts(sound: Int, on: Set<Int>, label: String) {
+            for (p in (0..7) + 9) partOnOff(sound, p, p in on)
+            say("sound $sound parts → $label: ${on.sorted().joinToString(",")}")
+        }
 
         /** Run [step] with progress 0..1 over [ms] of real time (a script loop that steps once per frame). */
         fun animate(ms: Int, step: (Double) -> Unit) {
@@ -191,7 +209,14 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
                 if (v.seq.active) v.seq.onTimer()
                 v.device.onTimer()
                 // A song that played to the end of its data (an ending track) releases its notes naturally.
-                if (!v.seq.active) v.stop()
+                if (!v.seq.active) {
+                    v.stop()
+                    for (t in endTriggers.filter { it.sound == v.sound }) {
+                        endTriggers.remove(t)
+                        say("sound ${v.sound} finished → ${t.label}")
+                        t.action()
+                    }
+                }
             }
         }
 
@@ -260,6 +285,22 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
         }
         publish()
         return peaks.toIntArray()
+    }
+
+    /** Test hook: RMS level (0..32767) of each [windowMs] of mixed output. */
+    internal fun renderRms(seconds: Double, windowMs: Int = 1000): DoubleArray {
+        val window = SAMPLE_RATE * windowMs / 1000
+        val out = ArrayList<Double>()
+        var count = 0
+        var sum = 0.0
+        repeat((seconds * ImuseSequencer.TIMER_HZ).toInt()) {
+            tick { l, r ->
+                sum += (l.toDouble() * l + r.toDouble() * r) / 2
+                if (++count == window) { out += Math.sqrt(sum / window); count = 0; sum = 0.0 }
+            }
+        }
+        publish()
+        return out.toDoubleArray()
     }
 
     internal fun playingSounds(): List<Int> = voices.filter { !it.stopped }.map { it.sound }

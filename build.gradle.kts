@@ -74,3 +74,10 @@ tasks.register<JavaExec>("notecounts") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("adventureexplorer.woodtick.NoteCounts")
 }
+
+// ./gradlew layerdump --args="/path/to/MONKEY2 20"
+tasks.register<JavaExec>("layerdump") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("adventureexplorer.woodtick.LayerDump")
+}

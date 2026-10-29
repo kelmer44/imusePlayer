@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.Slider
+import androidx.compose.material.SliderDefaults
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -144,12 +151,14 @@ private fun ChooseFolderButton(current: String?, onChosen: (String) -> Unit) {
 @Composable
 internal fun Explorer(
     assets: Mi2Assets, engine: WoodtickEngine, path: String,
-    startScene: Scene = Scenes.all.first(), startAt: Room? = null, changeGame: (String) -> Unit = {},
+    startScene: Scene = Scenes.all.first(), startAt: Room? = null, startX: Float = 0f, changeGame: (String) -> Unit = {},
 ) {
     var scene by remember { mutableStateOf(startScene) }
     var current by remember { mutableStateOf(startAt) }
     var activeToggle by remember { mutableStateOf<Toggle?>(null) }
     var state by remember { mutableStateOf(engine.state) }
+    var posX by remember { mutableStateOf(startX) }
+    var walking by remember { mutableStateOf(0) }
     val bitmaps = remember(assets) { assets.images.mapValues { it.value.toComposeImageBitmap() } }
 
     LaunchedEffect(engine) { while (true) { state = engine.state; delay(80) } }
@@ -172,7 +181,31 @@ internal fun Explorer(
         if (activeToggle == toggle) endToggle() else { activeToggle = toggle; engine.post { toggle.start(this) } }
     }
 
+    fun moveTo(target: Float) {
+        val sc = scene.scrub ?: return
+        val to = target.coerceIn(0f, sc.width.toFloat())
+        val from = posX
+        posX = to
+        if (current == null) {
+            val room = scene.rooms.first()
+            current = room
+            engine.post { scene.enter(this, room); sc.move(this, 0, to.toInt()) }
+        } else engine.post { sc.move(this, from.toInt(), to.toInt()) }
+    }
+
+    LaunchedEffect(walking, scene) {
+        val sc = scene.scrub ?: return@LaunchedEffect
+        while (walking != 0) {
+            delay(50)
+            val next = posX + walking * sc.speed * 0.05f
+            moveTo(next)
+            if (next <= 0f || next >= sc.width) walking = 0
+        }
+    }
+
     fun silence() {
+        walking = 0
+        posX = 0f
         activeToggle = null
         engine.post { stopAll() }
         current = null
@@ -183,6 +216,7 @@ internal fun Explorer(
             Header(path, scene, onScene = { if (it != scene) { silence(); scene = it } }, onStop = ::silence, onChange = changeGame)
             Spacer(Modifier.height(12.dp))
             val hint = when {
+                scene.scrub != null -> "Drag along the swamp, use the slider, or let the character walk. Instruments join where the game's script adds them."
                 current == null -> "Click a room to start its music."
                 else -> "Click a connected room to walk there. The music changes the way the game does it."
             }
@@ -190,10 +224,65 @@ internal fun Explorer(
             Spacer(Modifier.height(12.dp))
             val toggle = scene.toggles.firstOrNull { it.roomKey == current?.key }
             val toggleOn = toggle != null && activeToggle == toggle
-            Map(scene, current, bitmaps, toggle, toggleOn, onToggle = { toggleRoom(toggle) }, onVisit = ::visit, modifier = Modifier.weight(1f).fillMaxWidth())
+            val scrub = scene.scrub
+            if (scrub != null) {
+                ScrubView(scrub, bitmaps.getValue(scene.rooms.first().key), posX, walking, state, onX = { walking = 0; moveTo(it) }, onWalk = { walking = it }, modifier = Modifier.weight(1f).fillMaxWidth())
+            } else {
+                Map(scene, current, bitmaps, toggle, toggleOn, onToggle = { toggleRoom(toggle) }, onVisit = ::visit, modifier = Modifier.weight(1f).fillMaxWidth())
+            }
         }
         val sideToggle = scene.toggles.firstOrNull { it.roomKey == current?.key }
         Side(current, sideToggle, sideToggle != null && activeToggle == sideToggle, state, onToggle = { toggleRoom(sideToggle) })
+    }
+}
+
+@Composable
+private fun ScrubView(
+    scrub: Scrub, image: ImageBitmap, x: Float, walking: Int, @Suppress("UNUSED_PARAMETER") state: WoodtickEngine.Snapshot,
+    onX: (Float) -> Unit, onWalk: (Int) -> Unit, modifier: Modifier,
+) {
+    Column(modifier.clip(RoundedCornerShape(10.dp)).background(Panel).border(1.dp, Rule, RoundedCornerShape(10.dp)).padding(16.dp)) {
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().aspectRatio(image.width.toFloat() / image.height).clip(RoundedCornerShape(8.dp)).border(1.dp, Rule, RoundedCornerShape(8.dp))
+                .pointerInput(scrub) { detectTapGestures { onX(it.x / size.width * scrub.width) } }
+                .pointerInput(scrub) { detectHorizontalDragGestures { change, _ -> onX(change.position.x / size.width * scrub.width) } },
+        ) {
+            val w = maxWidth
+            Image(image, "Swamp", contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
+            for ((i, mark) in scrub.marks.withIndex()) {
+                val (mx, label) = mark
+                Box(Modifier.offset(x = w * (mx.toFloat() / scrub.width)).width(2.dp).fillMaxHeight().background(Rum.copy(alpha = 0.8f)))
+                Text(
+                    "X $mx · $label", color = Rum, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                    // Stagger neighbouring labels so they do not overlap
+                    modifier = Modifier.offset(x = w * (mx.toFloat() / scrub.width) + 6.dp, y = 6.dp + 22.dp * (i % 2)).background(Night.copy(alpha = 0.7f)).padding(horizontal = 4.dp, vertical = 1.dp),
+                )
+            }
+            // The character: a marker that follows the position
+            Box(Modifier.offset(x = w * (x / scrub.width) - 1.dp).width(3.dp).fillMaxHeight().background(Lagoon))
+            Box(Modifier.align(Alignment.BottomStart).offset(x = w * (x / scrub.width) - 8.dp, y = (-8).dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Lagoon).border(2.dp, Night, RoundedCornerShape(8.dp)))
+        }
+        Spacer(Modifier.height(12.dp))
+        Slider(
+            value = x, onValueChange = onX, valueRange = 0f..scrub.width.toFloat(),
+            colors = SliderDefaults.colors(thumbColor = Lagoon, activeTrackColor = Lagoon, inactiveTrackColor = Rule),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { onWalk(if (walking == -1) 0 else -1) }, colors = ButtonDefaults.outlinedButtonColors(contentColor = if (walking == -1) Lagoon else Ink)) { Text(if (walking == -1) "Pause" else "Walk left") }
+            OutlinedButton(onClick = { onWalk(if (walking == 1) 0 else 1) }, colors = ButtonDefaults.outlinedButtonColors(contentColor = if (walking == 1) Lagoon else Ink)) { Text(if (walking == 1) "Pause" else "Walk right") }
+            Spacer(Modifier.weight(1f))
+            Text("X ${x.toInt()} of ${scrub.width}", color = Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        }
+        Spacer(Modifier.height(14.dp))
+        Label("Instrument layers")
+        for (layer in scrub.layers()) {
+            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(if (layer.on) Lagoon else Rule))
+                Spacer(Modifier.width(10.dp))
+                Text(layer.label, color = if (layer.on) Ink else Muted, fontSize = 14.sp)
+                Text(if (layer.on) "  playing" else "  off", color = if (layer.on) Lagoon else Muted, fontSize = 12.sp)
+            }
+        }
     }
 }
 

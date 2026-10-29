@@ -38,7 +38,7 @@ object Woodtick : Scene {
 
     override val toggles = listOf(
         Toggle(
-            "laundry", "Talk to the characters", "Stop talking to the characters",
+            "laundry", "Talk to Men of Low Moral Fiber", "Stop talking to Men of Low Moral Fiber",
             "Adds the conversation layer: parts 3, 9 and 10 fade in while part 1 drops, as in the game's laundry script.",
             start = { talkStart(it) }, stop = { talkEnd(it) },
         ),

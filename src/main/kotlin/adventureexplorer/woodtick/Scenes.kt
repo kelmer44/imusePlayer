@@ -21,6 +21,24 @@ data class Toggle(
     val stop: (WoodtickEngine.Engine) -> Unit,
 )
 
+/** One instrument layer of a song and whether it is playing right now. */
+data class Layer(val label: String, val on: Boolean)
+
+/**
+ * A room whose music follows where the player stands along it (the swamp): a picture [width] pixels wide,
+ * a position the music reacts to, and the layers that are playing at that position.
+ */
+class Scrub(
+    val width: Int,
+    /** Positions where the game's script changes the music, with a label for each. */
+    val marks: List<Pair<Int, String>>,
+    /** Pixels per second when the character walks by itself. */
+    val speed: Int,
+    /** The player walked from [from] to [to]; run the layer changes in between, in order. */
+    val move: (WoodtickEngine.Engine, Int, Int) -> Unit,
+    val layers: () -> List<Layer>,
+)
+
 /** A group of rooms whose music the game's scripts tie together (Woodtick, Booty Island's town). */
 interface Scene {
     val key: String
@@ -29,6 +47,7 @@ interface Scene {
     /** Where each room sits on the map, as fractions of the map area (centre of the tile). */
     val layout: Map<String, Pair<Float, Float>>
     val toggles: List<Toggle> get() = emptyList()
+    val scrub: Scrub? get() = null
 
     val byKey: Map<String, Room> get() = rooms.associateBy { it.key }
     val songIds: List<Int> get() = rooms.map { it.song }.distinct()
@@ -41,6 +60,6 @@ interface Scene {
 }
 
 object Scenes {
-    val all: List<Scene> = listOf(Woodtick, BootyIsland)
+    val all: List<Scene> = listOf(Woodtick, BootyIsland, Swamp)
     val songIds: List<Int> = all.flatMap { it.songIds }.distinct()
 }

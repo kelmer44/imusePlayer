@@ -64,9 +64,8 @@ object BootyIsland : Scene {
     }
 
     private fun startFuneral(e: WoodtickEngine.Engine) {
+        // Script 117 switches part 9 off only when story flag bit 90 is set; it is not, so the song plays as is.
         e.startSound(FUNERAL)
-        // Part 9 is switched off unless the story flag (bit 90) is set.
-        e.after(MASK_DELAY_MS) { partOnOff(FUNERAL, 9, false) }
     }
 
     override fun go(e: WoodtickEngine.Engine, from: Room, to: Room) {

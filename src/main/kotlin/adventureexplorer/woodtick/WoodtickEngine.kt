@@ -35,7 +35,13 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
         var stopAtSilence = false
         var tailSamples = -1        // >= 0 once stopped: samples of release tail still to render
         var inEnding = false
+        /** Timer ticks since the song started; part commands wait until the song's own setup data has run. */
+        var age = 0
+        val settling = ArrayList<() -> Unit>()
         val stopped get() = tailSamples >= 0
+
+        /** Run [action] now, or once the song has been playing for [SETTLE_TICKS] (its setup SysEx sets each part's on/off state). */
+        fun whenSettled(action: () -> Unit) { if (age >= SETTLE_TICKS) action() else settling += action }
 
         fun stop() {
             if (stopped) return
@@ -126,11 +132,13 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
         }
 
         fun partOnOff(sound: Int, part: Int, on: Boolean) {
-            voices.firstOrNull { it.sound == sound && !it.stopped }?.seq?.partOnOff(part, on)
+            val v = voices.firstOrNull { it.sound == sound && !it.stopped } ?: return
+            v.whenSettled { v.seq.partOnOff(part, on) }
         }
 
         fun partVolume(sound: Int, part: Int, value: Int) {
-            voices.firstOrNull { it.sound == sound && !it.stopped }?.seq?.partVolume(part, value)
+            val v = voices.firstOrNull { it.sound == sound && !it.stopped } ?: return
+            v.whenSettled { v.seq.partVolume(part, value) }
         }
 
         /** `enqueue_trigger` + `enqueue_command`: run [action] once, the next time [sound] emits [marker]. */
@@ -208,6 +216,7 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
                 }
                 if (v.seq.active) v.seq.onTimer()
                 v.device.onTimer()
+                if (++v.age == SETTLE_TICKS) { for (a in v.settling) a(); v.settling.clear() }
                 // A song that played to the end of its data (an ending track) releases its notes naturally.
                 if (!v.seq.active) {
                     v.stop()
@@ -315,6 +324,8 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
 
     companion object {
         const val SAMPLE_RATE = 44_100
+        /** Half a second: the song's setup data (part on/off, instruments) has run by then. */
+        private const val SETTLE_TICKS = ImuseSequencer.TIMER_HZ / 2
         /** One chip alone plays at the preview's level; overlapping chips are limited by the clamp. */
         private const val MASTER = 1.0
     }

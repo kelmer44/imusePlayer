@@ -39,3 +39,14 @@ object NoteCounts {
         mgr.close()
     }
 }
+
+/** Dev tool: list the object layers (name, position, size) of a room composite. args: <gamePath> <room> */
+object LayerDump {
+    @JvmStatic fun main(args: Array<String>) {
+        val mgr = ScriptManager()
+        mgr.detectGame(args[0])
+        val data = mgr.loadResource(args[0], "comp:MONKEY2:${args[1]}")!!
+        for (l in data.layers.orEmpty()) println("LAYER ${l.name}  x=${l.x} y=${l.y} w=${l.image.width} h=${l.image.height} visible=${l.visible}")
+        mgr.close()
+    }
+}

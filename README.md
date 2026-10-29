@@ -26,6 +26,22 @@ Needs the **AdLib (DOS)** version, i.e. `MONKEY2.000` + `MONKEY2.001` with `ADL 
 - Not reproduced: script 120's adaptive layer (it also cycles between songs 114/117/118 and adds layers
   when you pass objects), and Booty Island's outdoor theme (115) because the island map isn't a scene yet.
 
+## Swamp (room 20)
+
+Song 109 starts with only parts 1 and 4 playing; its own setup data switches the other parts off, and the
+scripts layer them in as you walk right (the room is 792 px wide):
+
+| Where | Part | Source |
+|---|---|---|
+| X 165, at the sign | 12 | stepping on the coffin (local script 203; script 204 switches it off on the shore) |
+| X 270 | 11 | local script 216 (`getActorX`) |
+| X 470 | 2 | local script 216 (goes off again at 470 and below) |
+| X 640, the skull's mouth | 0, the lead | room 21's entry script (its exit script switches it off) |
+
+The coffin and the skull are events in the game; the scene turns them into thresholds along the walk, and they are
+easy to move (`Swamp.COFFIN_X`, `SKULL_X`). Parts 11 and 12 are very quiet instruments; parts 2 and 0 are the
+audible steps. Not reproduced: the extra layers of the voodoo hut's own scene (parts 11, 12, 9, 10, 6, script 212 of room 21).
+
 ## What the scripts do (Woodtick) (read with `tools/scumm5_disasm.py`)
 
 | Room | SCUMM room | Song |

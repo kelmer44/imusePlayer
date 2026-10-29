@@ -36,7 +36,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MI2 Music Explorer"
-            packageVersion = "1.0.0"
+            packageVersion = (project.findProperty("appVersion") as String?) ?: "1.0.0"
             description = "Walk around Monkey Island 2 scenes and hear the iMUSE music transitions on an OPL2 AdLib emulation"
             modules("java.prefs")
             macOS { iconFile.set(project.file("src/main/resources/icons/fedora.icns")) }

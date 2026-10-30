@@ -62,16 +62,38 @@ rest in. That is why a song "naturally" sounds thinner than all of its parts tog
 
 ## Booty Island
 
-Global scripts 117 (`117(fromRoom, toRoom)`) and 120 (a layer director that runs while you are in town).
+Global scripts 117 (`117(fromRoom, toRoom)`, the room-to-room music script) and 116 (the same for the island map), plus
+120 and 122 (the town song's director).
 
-- **Ville, Spitville and both shops** share song **118**. The game never restarts it when you walk between them; script 120
-  only switches parts when the ego's room changes. It reads a 90-character string of `1` / `0`, **9 characters per
-  group** (`(group - 1) * 9`): characters 0-7 are parts 0-7 and character 8 is part 9.
-  - Ville: a random group 1-3, rolled when the town song starts.
-  - Spitville: group 5. Antique shop: group 9. Costume shop: group 2.
-- **Funeral parlor** has its own song **116**. Entering fades 118 out over a second while 116 starts. Leaving arms jump
-  hook 1 on 116, waits for it to play out its ending, then starts 118.
+- **The ville plays song 115**, the island theme (228 beats, with a short and a long ending track). It carries on from the
+  island map; **nothing the player does in the ville changes it**. Script 117 only starts it when it is not already
+  playing.
+- **Shops and Spitville play the town song 118** (and its alternate, 117). Going from the ville into a shop cues 115's
+  ending (jump hook 1, which jumps to its short ending track at the next 4-beat point) while it fades over 90 ticks, and
+  starts 118 a frame later with its own hook 2, which skips the town song's intro. Spitville fades 115 over 60 ticks
+  with no hook. Walking back out fades the town song over 60 ticks and starts 115 afresh.
+- **Instrument mixes.** Script 120 reads a 90-character string of `1` / `0`, **9 characters per mix**
+  (`(mix - 1) * 9`): characters 0-7 are parts 0-7 and character 8 is part 9. Spitville is mix 5, the antique shop 9, the
+  costume shop 2; a town song that restarts rolls a random mix 1-3.
+- **The town song evolves by itself in the shops** (in Spitville the script only waits). The song has a marker 2 at beat
+  136.36, a marker 3 at its loop end (148.4) and a marker 5 every 30 beats. About two beats before the end, script 120's check
+  (it runs while the song's position is past beat 134) acts, and the count `L3` decides what:
+  - the first two times: pick the next mix by a random walk and queue it on marker 3, so it comes in at the loop end. Each
+    mix has a row of letters (one per possible next mix, `A` = mix 1 ... `J` = mix 10; for example mix 8 is `SSSRRRR`).
+    Mixes already visited and the current one are skipped. `Z` starts script 122, `S` forgets the visited mixes, and `R`
+    lets the music die out (the player skips it);
+  - the third time: swap to the alternate song 117 (not while the mix is 9 or 10, which keep walking). 117 starts at marker 2,
+    118 stops at the next marker 5, and 117 hands back to a fresh 118 at its marker 3 (beat 144.4). The count restarts.
+- **Script 122** (the fast shuffle) applies a random mix from 1 to 5, not repeating within a cycle, every 360 jiffies (6 s).
+- The same director also runs in the mansion scenes and the island map, which are not scenes of the player.
+- **Funeral parlor** has its own song **116**. Entering fades the music over a second while 116 starts. Leaving arms jump
+  hook 1 on 116, waits for it to play out its ending, then the next room's song starts.
 - Part 9 of the funeral song is switched off only when a story flag (bit 90) is set; it is not in the player.
+- The ville's own check `bit610` (set when you arrive from the island) is what keeps the island song on in the ville;
+  without it script 117 would start the town song and its director instead.
+
+The player offers buttons for what the game does by chance in the shops: the next mix now, a chosen mix, the song swap,
+the fast shuffle, and a switch for the automatic evolution.
 
 ## Swamp (room 20) and the voodoo hut (room 21)
 
@@ -96,8 +118,9 @@ picture to the right of the swamp's, so the walk is one panorama of 1248 px.
 
 - Woodtick: the cartographer's first-visit variation (jump hook 3 and a part hook, gated on story flags); the inn's
   part 1 / part 3 morph (script 151) when walking to Largo's room.
-- Booty Island: script 120's adaptive layer (it also cycles between songs 114, 117 and 118 and adds layers when you pass
-  objects); the island's outdoor theme (115), because the island map is not a scene.
+- Booty Island: the island map and the mansion, which use the same director with songs 114 and 115; the walk's `R` letter
+  (the town music dying out); the first-visit variations of the island theme (arming part hooks on arrival); Spitville's
+  contest, which restarts the town song afterwards but changes no layers.
 - Swamp: the voodoo lady's first-visit cutscene (room 21 script 206), which has its own music.
 - Only the AdLib (OPL) renderer is supported. No MT-32 or other MIDI output.
 

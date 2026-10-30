@@ -46,11 +46,12 @@ fun main(args: Array<String>) {
     }
 
     val ville = BootyIsland.byKey.getValue("ville")
-    val antique = BootyIsland.byKey.getValue("antique")
+    val costume = BootyIsland.byKey.getValue("costume")
     BootyIsland.random = { 3 }
-    shot("booty-island", BootyIsland, antique) {
+    BootyIsland.rng = kotlin.random.Random(7)
+    shot("booty-island", BootyIsland, costume) {
         post { BootyIsland.enter(this, ville) }; runOffline(2.0)
-        post { BootyIsland.go(this, ville, antique) }; runOffline(1.0)
+        post { BootyIsland.go(this, ville, costume) }; runOffline(6.0)
     }
 
     shot("swamp", Swamp, Swamp.rooms.first(), x = 1100f) {

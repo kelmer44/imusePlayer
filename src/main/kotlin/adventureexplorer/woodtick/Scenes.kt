@@ -15,7 +15,7 @@ data class Room(
     val appended: List<Int> = emptyList(),
 )
 
-/** A button a room can offer that changes the music without leaving it (e.g. talking to characters). */
+/** A switch a room offers that changes the music without leaving it (talking in the laundry, the ville's auto-evolve). */
 data class Toggle(
     val roomKey: String,
     val startLabel: String,
@@ -23,6 +23,30 @@ data class Toggle(
     val description: String,
     val start: (WoodtickEngine.Engine) -> Unit,
     val stop: (WoodtickEngine.Engine) -> Unit,
+    /** Short texts for the small button on the room's picture. */
+    val shortOff: String = "Talk",
+    val shortOn: String = "Talking…",
+    /** When the model itself knows whether the switch is on, the UI follows it instead of remembering clicks. */
+    val isOn: (() -> Boolean)? = null,
+)
+
+/** A one-shot action a room offers (a new instrument mix, a song change). */
+data class Action(
+    val roomKey: String,
+    val label: String,
+    val description: String,
+    val short: String,
+    val run: (WoodtickEngine.Engine) -> Unit,
+)
+
+/** A row of numbered choices a room offers (the ville's ten instrument mixes). */
+data class Chips(
+    val roomKey: String,
+    val title: String,
+    val description: String,
+    val options: List<String>,
+    val selected: () -> Int,
+    val pick: (WoodtickEngine.Engine, Int) -> Unit,
 )
 
 /** One instrument layer of a song and whether it is playing right now. */
@@ -51,6 +75,8 @@ interface Scene {
     /** Where each room sits on the map, as fractions of the map area (centre of the tile). */
     val layout: Map<String, Pair<Float, Float>>
     val toggles: List<Toggle> get() = emptyList()
+    val actions: List<Action> get() = emptyList()
+    val chips: List<Chips> get() = emptyList()
     val scrub: Scrub? get() = null
 
     val byKey: Map<String, Room> get() = rooms.associateBy { it.key }

@@ -326,8 +326,8 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
 
     companion object {
         const val SAMPLE_RATE = 44_100
-        /** Half a second: the song's setup data (part on/off, instruments) has run by then. */
-        private const val SETTLE_TICKS = ImuseSequencer.TIMER_HZ / 2
+        /** 150 ms: the song's setup data (part on/off, instruments) and its first hooks have run by then. */
+        private const val SETTLE_TICKS = ImuseSequencer.TIMER_HZ * 3 / 20
         /** One chip alone plays at the preview's level; overlapping chips are limited by the clamp. */
         private const val MASTER = 1.0
     }

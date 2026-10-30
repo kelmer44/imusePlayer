@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -165,7 +167,7 @@ internal fun Explorer(
 ) {
     var scene by remember { mutableStateOf(startScene) }
     var current by remember { mutableStateOf(startAt) }
-    var activeToggle by remember { mutableStateOf(if (startToggleOn) startScene.toggles.firstOrNull { it.roomKey == startAt?.key } else null) }
+    var activeToggles by remember { mutableStateOf(if (startToggleOn) startScene.toggles.filter { it.roomKey == startAt?.key }.toSet() else emptySet()) }
     var state by remember { mutableStateOf(engine.state) }
     var posX by remember { mutableStateOf(startX) }
     var walking by remember { mutableStateOf(0) }
@@ -173,22 +175,30 @@ internal fun Explorer(
 
     LaunchedEffect(engine) { while (true) { state = engine.state; delay(80) } }
 
-    fun endToggle() {
-        activeToggle?.let { t -> engine.post { t.stop(this) } }
-        activeToggle = null
+    /** Switches the model tracks itself (`isOn`) follow it; the others follow the clicks. */
+    fun isOn(t: Toggle) = t.isOn?.invoke() ?: (t in activeToggles)
+
+    fun endToggles() {
+        for (t in activeToggles) engine.post { t.stop(this) }
+        activeToggles = emptySet()
     }
 
     fun visit(room: Room) {
         val from = current
-        endToggle()
+        endToggles()
         current = room
         if (from == null) engine.post { scene.enter(this, room) }
         else engine.post { scene.go(this, from, room) }
     }
 
-    fun toggleRoom(toggle: Toggle?) {
-        toggle ?: return
-        if (activeToggle == toggle) endToggle() else { activeToggle = toggle; engine.post { toggle.start(this) } }
+    fun flip(toggle: Toggle) {
+        if (isOn(toggle)) {
+            activeToggles = activeToggles - toggle
+            engine.post { toggle.stop(this) }
+        } else {
+            if (toggle.isOn == null) activeToggles = activeToggles + toggle
+            engine.post { toggle.start(this) }
+        }
     }
 
     fun moveTo(target: Float) {
@@ -216,7 +226,7 @@ internal fun Explorer(
     fun silence() {
         walking = 0
         posX = 0f
-        activeToggle = null
+        activeToggles = emptySet()
         engine.post { stopAll() }
         current = null
     }
@@ -232,17 +242,29 @@ internal fun Explorer(
             }
             Text(hint, color = Muted, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
-            val toggle = scene.toggles.firstOrNull { it.roomKey == current?.key }
-            val toggleOn = toggle != null && activeToggle == toggle
+            val roomToggles = scene.toggles.filter { it.roomKey == current?.key }
+            val roomActions = scene.actions.filter { it.roomKey == current?.key }
+            val roomChips = scene.chips.filter { it.roomKey == current?.key }
+            // The small button on the picture: the room's first action, else its first switch.
+            val overlay = roomActions.firstOrNull()?.let { a -> Overlay(a.short, false) { engine.post { a.run(this) } } }
+                ?: roomToggles.firstOrNull()?.let { t -> Overlay(if (isOn(t)) t.shortOn else t.shortOff, isOn(t)) { flip(t) } }
             val scrub = scene.scrub
             if (scrub != null) {
                 ScrubView(scrub, bitmaps.getValue(scene.rooms.first().key), posX, walking, state, onX = { walking = 0; moveTo(it) }, onWalk = { walking = it }, modifier = Modifier.weight(1f).fillMaxWidth())
             } else {
-                Map(scene, current, bitmaps, toggle, toggleOn, onToggle = { toggleRoom(toggle) }, onVisit = ::visit, modifier = Modifier.weight(1f).fillMaxWidth())
+                Map(scene, current, bitmaps, overlay, onVisit = ::visit, modifier = Modifier.weight(1f).fillMaxWidth())
             }
         }
-        val sideToggle = scene.toggles.firstOrNull { it.roomKey == current?.key }
-        Side(current, sideToggle, sideToggle != null && activeToggle == sideToggle, state, onToggle = { toggleRoom(sideToggle) })
+        Side(
+            current,
+            toggles = scene.toggles.filter { it.roomKey == current?.key }.map { it to isOn(it) },
+            actions = scene.actions.filter { it.roomKey == current?.key },
+            chips = scene.chips.filter { it.roomKey == current?.key },
+            state = state,
+            onToggle = { flip(it) },
+            onAction = { a -> engine.post { a.run(this) } },
+            onChip = { c, i -> engine.post { c.pick(this, i) } },
+        )
     }
 }
 
@@ -337,10 +359,13 @@ private fun Header(path: String, scene: Scene, onScene: (Scene) -> Unit, onStop:
     }
 }
 
+/** The small button drawn on the current room's picture. */
+private class Overlay(val label: String, val on: Boolean, val onClick: () -> Unit)
+
 @Composable
 private fun Map(
     scene: Scene, current: Room?, bitmaps: kotlin.collections.Map<String, androidx.compose.ui.graphics.ImageBitmap>,
-    toggle: Toggle?, toggleOn: Boolean, onToggle: () -> Unit, onVisit: (Room) -> Unit, modifier: Modifier,
+    overlay: Overlay?, onVisit: (Room) -> Unit, modifier: Modifier,
 ) {
     BoxWithConstraints(modifier.clip(RoundedCornerShape(10.dp)).background(Panel).border(1.dp, Rule, RoundedCornerShape(10.dp))) {
         val w = maxWidth
@@ -386,17 +411,17 @@ private fun Map(
                 ) {
                     Image(bitmaps[room.key]!!, room.title, contentScale = ContentScale.Crop, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize())
                     if (!reachable) Box(Modifier.fillMaxSize().background(Night.copy(alpha = 0.72f)))
-                    if (here && toggle != null) {
-                        // Small button on the picture itself: the same switch as the side panel's.
+                    if (here && overlay != null) {
+                        // Small button on the picture itself: the same control as the side panel's.
                         Box(
                             Modifier.align(Alignment.BottomEnd).padding(6.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(if (toggleOn) Lagoon else Night.copy(alpha = 0.85f))
-                                .border(1.dp, if (toggleOn) Lagoon else Rum, RoundedCornerShape(14.dp))
-                                .clickable { onToggle() }
+                                .background(if (overlay.on) Lagoon else Night.copy(alpha = 0.85f))
+                                .border(1.dp, if (overlay.on) Lagoon else Rum, RoundedCornerShape(14.dp))
+                                .clickable { overlay.onClick() }
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         ) {
-                            Text(if (toggleOn) "Talking…" else "Talk", color = if (toggleOn) Night else Rum, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(overlay.label, color = if (overlay.on) Night else Rum, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -410,15 +435,41 @@ private fun Map(
 }
 
 @Composable
-private fun Side(current: Room?, toggle: Toggle?, toggleOn: Boolean, state: WoodtickEngine.Snapshot, onToggle: () -> Unit) {
-    Column(Modifier.width(360.dp).fillMaxHeight().background(Panel).border(1.dp, Rule).padding(18.dp)) {
+private fun Side(
+    current: Room?, toggles: List<Pair<Toggle, Boolean>>, actions: List<Action>, chips: List<Chips>, state: WoodtickEngine.Snapshot,
+    onToggle: (Toggle) -> Unit, onAction: (Action) -> Unit, onChip: (Chips, Int) -> Unit,
+) {
+    Column(Modifier.width(360.dp).fillMaxHeight().background(Panel).border(1.dp, Rule).verticalScroll(rememberScrollState()).padding(18.dp)) {
         Label("In this room")
         Text(current?.title ?: "—", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Text(current?.note ?: "Nothing playing yet", color = Muted, fontSize = 13.sp)
-        if (toggle != null) {
+        for (c in chips) {
+            Spacer(Modifier.height(14.dp))
+            Label(c.title)
+            val selected = c.selected()
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for ((i, name) in c.options.withIndex()) {
+                    val on = i + 1 == selected
+                    Box(
+                        Modifier.weight(1f).height(30.dp).clip(RoundedCornerShape(6.dp))
+                            .background(if (on) Rum else Night.copy(alpha = 0.6f))
+                            .border(1.dp, if (on) Rum else Rule, RoundedCornerShape(6.dp))
+                            .clickable { onChip(c, i) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(name, color = if (on) Night else Ink, fontSize = 12.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal) }
+                }
+            }
+            Text(c.description, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+        for (a in actions) {
             Spacer(Modifier.height(12.dp))
-            Button(onClick = onToggle, colors = ButtonDefaults.buttonColors(backgroundColor = if (toggleOn) Lagoon else Rum, contentColor = Night)) {
-                Text(if (toggleOn) toggle.stopLabel else toggle.startLabel)
+            OutlinedButton(onClick = { onAction(a) }, colors = ButtonDefaults.outlinedButtonColors(contentColor = Rum)) { Text(a.label) }
+            Text(a.description, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+        for ((toggle, on) in toggles) {
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { onToggle(toggle) }, colors = ButtonDefaults.buttonColors(backgroundColor = if (on) Lagoon else Rum, contentColor = Night)) {
+                Text(if (on) toggle.stopLabel else toggle.startLabel)
             }
             Text(toggle.description, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
@@ -441,8 +492,8 @@ private fun Side(current: Room?, toggle: Toggle?, toggleOn: Boolean, state: Wood
 
         Spacer(Modifier.height(20.dp))
         Label("Music log")
-        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-            items(state.log.asReversed()) { Text(it, color = Muted, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(vertical = 1.dp)) }
+        for (line in state.log.asReversed().take(40)) {
+            Text(line, color = Muted, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(vertical = 1.dp))
         }
     }
 }

@@ -21,7 +21,8 @@ fun main(args: Array<String>) {
     fun shot(name: String, scene: Scene, room: Room?, x: Float = 0f, toggleOn: Boolean = false, script: WoodtickEngine.() -> Unit) {
         val engine = WoodtickEngine(assets.songs)
         engine.script()
-        val image = ImageComposeScene(1280, 800, Density(1f)) {
+        // 960 x 600 pixels at 75% density: the same layout as the 1280 x 800 window, as a smaller picture
+        val image = ImageComposeScene(960, 600, Density(0.75f)) {
             AppFrame { Explorer(assets, engine, game, scene, room, x, toggleOn) }
         }.let { composeScene ->
             composeScene.render()

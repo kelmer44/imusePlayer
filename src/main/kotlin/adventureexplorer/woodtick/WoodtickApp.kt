@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
@@ -172,6 +173,7 @@ internal fun Explorer(
     var posX by remember { mutableStateOf(startX) }
     var walking by remember { mutableStateOf(0) }
     var wander by remember { mutableStateOf(false) }
+    var wanderSecs by remember { mutableStateOf(45) }
     val bitmaps = remember(assets) { assets.images.mapValues { it.value.toComposeImageBitmap() } }
 
     LaunchedEffect(engine) { while (true) { state = engine.state; delay(80) } }
@@ -224,10 +226,21 @@ internal fun Explorer(
         }
     }
 
-    // Wander: every 10-20 s walk through a random exit of the current room (a random room first, if none was picked).
+    // Wander: every ~[wanderSecs] s (plus or minus a quarter) walk through a random exit of the current room (a random room first, if none was picked).
     LaunchedEffect(wander, scene) {
+        fun dwell() = (wanderSecs * 1000L * (0.75 + Math.random() * 0.5)).toLong()
         while (wander && scene.scrub == null) {
-            delay(10_000L + (Math.random() * 10_000).toLong())
+            val room = current
+            // A room with a switch of its own (the laundry's talking) gets it turned on halfway through the stay.
+            val toggle = room?.let { r -> scene.toggles.firstOrNull { it.roomKey == r.key && it.isOn == null } }
+            if (toggle != null) {
+                val wait = dwell()
+                delay(wait / 2)
+                if (!wander || current != room) continue
+                if (!isOn(toggle)) flip(toggle)
+                delay(wait / 2)
+            } else delay(dwell())
+            if (!wander) break
             val here = current
             val next = if (here == null) scene.rooms.random() else here.exits.mapNotNull { scene.byKey[it] }.randomOrNull()
             if (next != null) visit(next)
@@ -252,13 +265,22 @@ internal fun Explorer(
                 current == null -> "Click a room to start its music."
                 else -> "Click a connected room to walk there. The music changes the way the game does it."
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(hint, color = Muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                if (scene.scrub == null) {
+            Text(hint, color = Muted, fontSize = 14.sp)
+            if (scene.scrub == null) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(
                         onClick = { wander = !wander },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = if (wander) Lagoon else Ink),
                     ) { Text(if (wander) "Wandering… (stop)" else "Wander randomly") }
+                    Text("change room about every", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp))
+                    for ((secs, label) in listOf(20 to "20 s", 45 to "45 s", 90 to "90 s", 180 to "3 min")) {
+                        OutlinedButton(
+                            onClick = { wanderSecs = secs },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = if (wanderSecs == secs) Lagoon else Muted),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        ) { Text(label, fontSize = 12.sp) }
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))

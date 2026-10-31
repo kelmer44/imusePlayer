@@ -37,6 +37,25 @@ class BootyTransitionsTest {
         return engine to engine.state.log
     }
 
+    @Test fun `clicking through rooms faster than the transitions leaves only the last room's song`() {
+        BootyIsland.rng = Random(1)
+        BootyIsland.random = { 3 }
+        val engine = WoodtickEngine(songs())
+        val ville = BootyIsland.byKey["ville"]!!
+        engine.post { BootyIsland.enter(this, ville) }
+        engine.runOffline(3.0)
+        var from = ville
+        for (key in listOf("antique", "ville", "spitville", "ville", "costume", "ville", "funeral", "ville", "antique", "spitville")) {
+            val to = BootyIsland.byKey[key]!!
+            val a = from
+            engine.post { interrupt(BootyIsland.playing(a)); BootyIsland.go(this, a, to) }
+            engine.runOffline(0.2)
+            from = to
+        }
+        engine.runOffline(8.0)
+        assertEquals(listOf(118), engine.playingSounds())
+    }
+
     @Test fun `the ville plays the island song and nothing in it changes by itself`() {
         val (engine, log) = walk("ville", wait = 1.0)
         engine.runOffline(120.0)

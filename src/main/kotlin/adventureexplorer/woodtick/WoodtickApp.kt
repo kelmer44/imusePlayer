@@ -188,7 +188,7 @@ internal fun Explorer(
         endToggles()
         current = room
         if (from == null) engine.post { scene.enter(this, room) }
-        else engine.post { scene.go(this, from, room) }
+        else engine.post { interrupt(scene.playing(from)); scene.go(this, from, room) }
     }
 
     fun flip(toggle: Toggle) {

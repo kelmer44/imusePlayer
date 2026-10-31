@@ -273,6 +273,8 @@ object BootyIsland : Scene {
     /** What is playing now, for fades. */
     private val current: Int get() = when (here.song) { TOWN -> townSong; else -> here.song }
 
+    override fun playing(room: Room): Set<Int> = if (room.song == TOWN) setOf(TOWN, ALT) else setOf(room.song)
+
     override fun go(e: WoodtickEngine.Engine, from: Room, to: Room) {
         e.clearTriggers()       // [272]
         shuffling = false

@@ -85,6 +85,9 @@ interface Scene {
     /** The first thing that plays when the player picks a starting room. */
     fun enter(e: WoodtickEngine.Engine, room: Room)
 
+    /** The songs that are legitimately playing while the player is in [room] (a transition being left behind fades the rest). */
+    fun playing(room: Room): Set<Int> = setOf(room.song)
+
     /** Walk from [from] to [to]: the music change the game's scripts make. */
     fun go(e: WoodtickEngine.Engine, from: Room, to: Room)
 }

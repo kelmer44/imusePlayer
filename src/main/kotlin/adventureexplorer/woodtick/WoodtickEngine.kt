@@ -153,6 +153,19 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
             endTriggers += EndTrigger(sound, label) { Engine().action() }
         }
 
+        /**
+         * A new room was picked: forget whatever an earlier, unfinished transition still had queued, and fade out every
+         * song that is not one of [keep] (leftovers of a transition the player interrupted by clicking on quickly).
+         */
+        fun interrupt(keep: Set<Int>) {
+            animations.clear()
+            for (v in voices) if (!v.stopped && v.sound !in keep && !(v.stopAtSilence && v.fadeStep != 0.0 && v.gain < 0.3)) {
+                v.fadeStep = -v.gain.coerceAtLeast(0.05) / (STALE_FADE_MS * ImuseSequencer.TIMER_HZ / 1000.0)
+                v.stopAtSilence = true
+                say("fade out leftover sound ${v.sound}")
+            }
+        }
+
         /** `clear_queue`. */
         fun clearTriggers() { triggers.clear(); endTriggers.clear() }
 
@@ -326,6 +339,7 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
 
     companion object {
         const val SAMPLE_RATE = 44_100
+        private const val STALE_FADE_MS = 400
         /** 150 ms: the song's setup data (part on/off, instruments) and its first hooks have run by then. */
         private const val SETTLE_TICKS = ImuseSequencer.TIMER_HZ * 3 / 20
         /** One chip alone plays at the preview's level; overlapping chips are limited by the clamp. */

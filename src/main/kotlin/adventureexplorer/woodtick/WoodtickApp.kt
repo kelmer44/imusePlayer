@@ -171,6 +171,7 @@ internal fun Explorer(
     var state by remember { mutableStateOf(engine.state) }
     var posX by remember { mutableStateOf(startX) }
     var walking by remember { mutableStateOf(0) }
+    var wander by remember { mutableStateOf(false) }
     val bitmaps = remember(assets) { assets.images.mapValues { it.value.toComposeImageBitmap() } }
 
     LaunchedEffect(engine) { while (true) { state = engine.state; delay(80) } }
@@ -223,7 +224,18 @@ internal fun Explorer(
         }
     }
 
+    // Wander: every 10-20 s walk through a random exit of the current room (a random room first, if none was picked).
+    LaunchedEffect(wander, scene) {
+        while (wander && scene.scrub == null) {
+            delay(10_000L + (Math.random() * 10_000).toLong())
+            val here = current
+            val next = if (here == null) scene.rooms.random() else here.exits.mapNotNull { scene.byKey[it] }.randomOrNull()
+            if (next != null) visit(next)
+        }
+    }
+
     fun silence() {
+        wander = false
         walking = 0
         posX = 0f
         activeToggles = emptySet()
@@ -240,7 +252,15 @@ internal fun Explorer(
                 current == null -> "Click a room to start its music."
                 else -> "Click a connected room to walk there. The music changes the way the game does it."
             }
-            Text(hint, color = Muted, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(hint, color = Muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                if (scene.scrub == null) {
+                    OutlinedButton(
+                        onClick = { wander = !wander },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (wander) Lagoon else Ink),
+                    ) { Text(if (wander) "Wandering… (stop)" else "Wander randomly") }
+                }
+            }
             Spacer(Modifier.height(12.dp))
             val roomToggles = scene.toggles.filter { it.roomKey == current?.key }
             val roomActions = scene.actions.filter { it.roomKey == current?.key }

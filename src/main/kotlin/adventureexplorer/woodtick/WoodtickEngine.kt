@@ -125,6 +125,12 @@ class WoodtickEngine(private val songs: Map<Int, ImuseSong>) {
             say("set hook $hook on sound $sound")
         }
 
+        /** `set hook` for part on/off (the island map arms hook 2 of part 0 on the island song). */
+        fun setPartHook(sound: Int, hook: Int, channel: Int) {
+            voices.firstOrNull { it.sound == sound && !it.stopped }?.seq?.armHook(HookKind.PART_ON_OFF, hook, channel)
+            say("set part hook $hook (part $channel) on sound $sound")
+        }
+
         fun jump(sound: Int, track: Int, beat: Int, tick: Int) {
             voices.firstOrNull { it.sound == sound && !it.stopped }?.let {
                 it.seq.jumpTo(track, beat, tick)

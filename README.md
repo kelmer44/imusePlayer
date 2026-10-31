@@ -14,7 +14,7 @@ Island 2* (the folder with `MONKEY2.000` and `MONKEY2.001`).
     <td><img src="docs/screenshots/woodtick-laundry.png" width="420" alt="The laundry with the talking layer on"><br><sub>The laundry: <i>Talk to Men of Low Moral Fiber</i> adds a layer</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/booty-island.png" width="420" alt="Booty Island: the costume shop with its mix controls"><br><sub>Booty Island: the shops' song evolves by itself, with buttons for each step</sub></td>
+    <td><img src="docs/screenshots/booty-island.png" width="420" alt="Booty Island: the costume shop with its mix controls"><br><sub>Booty Island: the shops' song evolves by itself, with buttons for each step; the mansion entryway starts with its own song and hands over to the same town song</sub></td>
     <td><img src="docs/screenshots/swamp.png" width="420" alt="The swamp, walked into the voodoo hut"><br><sub>The swamp: instruments join as you walk into the hut</sub></td>
   </tr>
 </table>

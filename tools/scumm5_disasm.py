@@ -513,6 +513,17 @@ def main(argv):
         print('global script', sid, 'in room', room)
         for at, x in music_events(scan(game, 'g', s, e)):
             print('     %05x  %s' % (at - s, fmt(x)))
+    elif cmd == 'trace':   # trace global <n> | trace room <n> <label>: every opcode, for reading conditions
+        if argv[3] == 'global':
+            room, s, e = game.global_script(int(argv[4]))
+            labels = [('g', s, e)]
+        else:
+            labels = [x for x in game.room_scripts(int(argv[4])) if x[0] == argv[5] or argv[5] == '*']
+        for label, s, e in labels:
+            d = Dis(game.res, s, e, trace=True)
+            d.run()
+            print('--', label)
+            print('\n'.join(d.lines))
     elif cmd == 'find':
         want = int(argv[3])
         for room in sorted(game.lflf):

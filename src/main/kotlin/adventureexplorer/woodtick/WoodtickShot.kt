@@ -54,6 +54,12 @@ fun main(args: Array<String>) {
         post { BootyIsland.go(this, ville, costume) }; runOffline(6.0)
     }
 
+    val entry = BootyIsland.byKey.getValue("entryway")
+    shot("booty-mansion", BootyIsland, entry) {
+        post { BootyIsland.enter(this, ville) }; runOffline(1.0)
+        post { BootyIsland.go(this, ville, entry) }; runOffline(3.0)
+    }
+
     shot("swamp", Swamp, Swamp.rooms.first(), x = 1100f) {
         post { Swamp.enter(this, Swamp.rooms.first()) }; runOffline(1.0)
         post { Swamp.move(this, 0, 1100) }; runOffline(1.0)

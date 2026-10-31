@@ -31,24 +31,32 @@ object BootyIsland : Scene {
     /** The alternate town song: plays instead of 118 for one pass now and then. */
     private const val ALT = 117
     private const val FUNERAL = 116
+    /** The mansion's own song: a long lead-in to the town song (script 120 hands over to 118 at its marker 4). */
+    internal const val MANSION = 114
 
     override val key = "booty"
     override val title = "Booty Island"
 
     override val rooms = listOf(
-        Room("ville", 46, "Ville", ISLAND, listOf("antique", "costume", "funeral", "spitville"), "Island theme (song 115)"),
+        Room("ville", 46, "Ville", ISLAND, listOf("antique", "costume", "funeral", "spitville", "map"), "Island theme (song 115)"),
         Room("spitville", 47, "Spitville", TOWN, listOf("ville"), "Town theme, Spitville mix"),
         Room("antique", 48, "Antique shop", TOWN, listOf("ville"), "Town theme, evolving by itself"),
         Room("costume", 49, "Costume shop", TOWN, listOf("ville"), "Town theme, evolving by itself"),
         Room("funeral", 50, "Funeral parlor", FUNERAL, listOf("ville"), "Funeral parlor theme"),
+        Room("map", 45, "Island map", ISLAND, listOf("ville", "grounds"), "Island theme (song 115)"),
+        Room("grounds", 53, "Mansion grounds", ISLAND, listOf("map", "entryway"), "Island theme if it was playing, else silence"),
+        Room("entryway", 55, "Mansion entryway", MANSION, listOf("grounds"), "Mansion song (114), then the town song"),
     )
 
     override val layout = mapOf(
-        "ville" to (0.50f to 0.46f),
-        "antique" to (0.18f to 0.17f),
-        "costume" to (0.82f to 0.17f),
-        "spitville" to (0.85f to 0.76f),
-        "funeral" to (0.15f to 0.76f),
+        "ville" to (0.50f to 0.38f),
+        "antique" to (0.14f to 0.14f),
+        "costume" to (0.86f to 0.14f),
+        "funeral" to (0.13f to 0.55f),
+        "spitville" to (0.87f to 0.55f),
+        "map" to (0.28f to 0.85f),
+        "grounds" to (0.55f to 0.85f),
+        "entryway" to (0.82f to 0.85f),
     )
 
     /** The rooms' own songs plus the alternate town song, which no room names but the director swaps in. */
@@ -69,6 +77,8 @@ object BootyIsland : Scene {
 
     private val roomMixes = mapOf("spitville" to 5, "antique" to 9, "costume" to 2)
     private val shops = setOf("antique", "costume")
+    /** Rooms where script 120 runs the walk and the song swap: the shops, and the mansion once its own song has handed over. */
+    private val directed = shops + "entryway"
 
     /** The fast shuffle (script 122) steps every 360 jiffies, 6 s, through mixes 1-5. */
     private const val SHUFFLE_MS = 6000
@@ -87,7 +97,11 @@ object BootyIsland : Scene {
     @Volatile var auto = true; private set
     /** Script 122's fast shuffle is running. */
     @Volatile var shuffling = false; private set
-    @Volatile private var here: Room = rooms[0]
+    @Volatile internal var here: Room = rooms[0]; private set
+    /** The mansion song 114 is still playing; the town song takes over at its end. */
+    @Volatile var intro = false; private set
+    /** A mix picked while the mansion song plays; the town song starts with it. */
+    private var pendingMix = 0
     /** How many loop ends the walk has applied since the town song (re)started; the third is the swap (`L3`). */
     @Volatile private var walks = 0
     private val visited = BooleanArray(11)
@@ -97,51 +111,50 @@ object BootyIsland : Scene {
     internal var random: () -> Int = { Random.nextInt(1, 4) }
     internal var rng: Random = Random.Default
 
-    private val inShop get() = here.key in shops
-    private val inTown get() = here.song == TOWN
+    internal val inShop get() = here.key in directed
+    internal val inTown get() = here.song == TOWN || here.key == "entryway"
 
     // ── Controls (the town song's rooms) ──────────────────────────────────────────────────
 
-    private val townRooms = listOf("antique", "costume", "spitville")
+    private val townRooms = listOf("antique", "costume", "spitville", "entryway")
 
-    override val toggles = shops.flatMap { room ->
-        listOf(
-            Toggle(
-                room, "Let the music evolve by itself", "Stop the music evolving",
-                "Script 120's random walk, which the game always runs in the shops.",
-                start = { auto = true; arm(it) }, stop = { auto = false; it.clearTriggers() },
-                shortOff = "Auto", shortOn = "Auto ✓", isOn = { auto },
-            ),
-        )
-    } + townRooms.map { room ->
-        Toggle(
-            room, "Fast shuffle", "Stop the fast shuffle",
-            "Script 122: a random mix from 1 to 5 every 6 seconds.",
-            start = { startShuffle(it) }, stop = { shuffling = false; arm(it) },
-            shortOff = "Shuffle", shortOn = "Shuffling…", isOn = { shuffling },
-        )
-    }
+    internal fun autoToggle(room: String) = Toggle(
+        room, "Let the music evolve by itself", "Stop the music evolving",
+        "Script 120's random walk, which the game always runs in the shops.",
+        start = { auto = true; arm(it) }, stop = { auto = false; if (!intro) it.clearTriggers() },
+        shortOff = "Auto", shortOn = "Auto ✓", isOn = { auto },
+    )
 
-    override val actions = townRooms.flatMap { room ->
-        listOf(
-            Action(
-                room, "Next mix now", "The next step of the random walk, without waiting for the loop end.", "Next mix",
-            ) { e -> nextWalkStep(allowShuffle = false)?.let { applyMix(e, it) } },
-            Action(
-                room, "Swap to the alternate song", "Song 117 takes over at the next loop end (the game does it every third).",
-                "Swap song",
-            ) { e -> if (townSong == TOWN) swapToAlt(e, button = true) else e.note("already in the alternate song; it hands back by itself") },
-        )
-    }
+    internal fun shuffleToggle(room: String) = Toggle(
+        room, "Fast shuffle", "Stop the fast shuffle",
+        "Script 122: a random mix from 1 to 5 every 6 seconds.",
+        start = { startShuffle(it) }, stop = { shuffling = false; arm(it) },
+        shortOff = "Shuffle", shortOn = "Shuffling…", isOn = { shuffling },
+    )
 
-    override val chips = townRooms.map { room ->
-        Chips(
-            room, "Instrument mix", "The ten arrangements script 120 walks between.",
-            options = (1..10).map { it.toString() },
-            selected = { mix },
-            pick = { e, i -> visited[i + 1] = true; applyMix(e, i + 1) },
-        )
-    }
+    internal fun mixActions(room: String) = listOf(
+        Action(
+            room, "Next mix now", "The next step of the random walk, without waiting for the loop end.", "Next mix",
+        ) { e -> nextWalkStep(allowShuffle = false)?.let { applyMix(e, it) } },
+        Action(
+            room, "Swap to the alternate song", "Song 117 takes over at the next loop end (the game does it every third).",
+            "Swap song",
+        ) { e -> if (townSong == TOWN) swapToAlt(e, button = true) else e.note("already in the alternate song; it hands back by itself") },
+    )
+
+    internal fun mixChips(room: String) = Chips(
+        room, "Instrument mix", "The ten arrangements script 120 walks between.",
+        options = (1..10).map { it.toString() },
+        selected = { mix },
+        pick = { e, i -> visited[i + 1] = true; applyMix(e, i + 1) },
+    )
+
+    override val toggles = directed.map { autoToggle(it) } + townRooms.map { shuffleToggle(it) }
+    override val actions = townRooms.flatMap { mixActions(it) } + Action(
+        "entryway", "Skip to the town song", "Jump the mansion song to its last bars, where script 120 hands over to the town song.",
+        "Skip intro",
+    ) { e -> if (intro) e.jump(MANSION, 0, 288, 0) else e.note("the town song is already playing") }
+    override val chips = townRooms.map { mixChips(it) }
 
     // ── Starting a song ───────────────────────────────────────────────────────────────────
 
@@ -150,12 +163,15 @@ object BootyIsland : Scene {
         // A fresh start is the game's own state: script 120 runs, the fast shuffle does not.
         auto = true
         shuffling = false
+        intro = false
+        mansionHeard = false
         begin(e, room, skipIntro = false)
     }
 
     private fun begin(e: WoodtickEngine.Engine, room: Room, skipIntro: Boolean) {
         here = room
         when (room.song) {
+            MANSION -> startMansion(e, room)
             FUNERAL -> e.startSound(FUNERAL)   // script 117 switches part 9 off only when story flag bit 90 is set; it is not
             ISLAND -> e.startSound(ISLAND)
             else -> startTown(e, room, skipIntro)
@@ -177,8 +193,69 @@ object BootyIsland : Scene {
     private const val MIX_DELAY_MS = 200
 
     private fun applyMix(e: WoodtickEngine.Engine, n: Int) {
+        if (intro) {
+            // The mansion song has no mixes: remember the choice for the town song that takes over at its end.
+            mix = n; pendingMix = n
+            return e.note("mix $n chosen; the mansion song is still playing, the town song starts with it at its end")
+        }
         mix = n
         e.applyParts(townSong, parts(n), "mix $n")
+    }
+
+    // ── The mansion (entryway ENCD script 224 + script 120's first branch) ───────────────────
+
+    /** Bit 764: set the first time the entryway starts the song, which then plays from its beginning; later it seeks. */
+    @Volatile internal var mansionHeard = false
+
+    /**
+     * Entering the entryway: song 114 starts (from the start the first time, then from a random beat 21-120), and
+     * 115, 119 and 113 stop. 114 hands over to the town song at its marker 4 (beat 292.36) and stops at marker 5; the
+     * town song then gets a random mix 1-3 and the walk of script 120 carries on as in a shop.
+     */
+    internal fun startMansion(e: WoodtickEngine.Engine, room: Room) {
+        here = room
+        e.stopSound(ISLAND)
+        townSong = TOWN
+        walks = 0
+        intro = true
+        pendingMix = 0
+        e.startSound(MANSION)
+        if (mansionHeard) {
+            val beat = rng.nextInt(21, 121)
+            e.jump(MANSION, 0, beat, 0)
+            e.note("script 120 seeks the mansion song to beat $beat")
+        }
+        mansionHeard = true
+        e.onMarker(MANSION, 4, "the town song starts under the end of the mansion song") {
+            intro = false
+            visited.fill(false); visited[1] = true
+            startSound(TOWN)
+            val n = pendingMix.takeIf { it != 0 } ?: random()
+            pendingMix = 0
+            after(MIX_DELAY_MS) { applyMix(this, n) }
+            arm(this)
+        }
+        e.onMarker(MANSION, 5, "the mansion song stops") { stopSound(MANSION) }
+    }
+
+    /** Leaving the entryway (its exit script): 114, 118 and 117 all fade over 60 ticks. */
+    internal fun leaveMansion(e: WoodtickEngine.Engine, to: Room) {
+        shuffling = false
+        intro = false
+        for (s in listOf(MANSION, TOWN, ALT)) e.fadeOutAndStop(s, FADE_MS)
+        here = to
+    }
+
+    /**
+     * The island map and the grounds. Script 116 on arriving at the map: if the island song is playing it stays and part hook 2
+     * of part 0 is armed, otherwise it starts (coming back from the mansion, where it was stopped). Script 117 does the same
+     * on the way into the ville. The grounds change nothing: the island song carries on if it was playing, else it is silent.
+     */
+    private fun islandWalk(e: WoodtickEngine.Engine, to: Room) {
+        here = to
+        if (to.key == "grounds") return
+        if (e.isPlaying(ISLAND)) { if (to.key == "map") e.setPartHook(ISLAND, 2, 0) }
+        else e.startSound(ISLAND)
     }
 
     // ── Script 120: the walk and the song swap ────────────────────────────────────────────
@@ -200,7 +277,7 @@ object BootyIsland : Scene {
     }
 
     private fun swapToAlt(e: WoodtickEngine.Engine, button: Boolean) {
-        if (townSong == ALT) return
+        if (townSong == ALT || intro) return
         if (button) {
             e.onMarker(TOWN, 2, "alternate song 117 (button)") { swapToAlt(this, button = false) }
             return
@@ -251,7 +328,7 @@ object BootyIsland : Scene {
     // ── Script 122: the fast shuffle ──────────────────────────────────────────────────────
 
     private fun startShuffle(e: WoodtickEngine.Engine) {
-        if (shuffling || townSong != TOWN || !inTown) return
+        if (shuffling || intro || townSong != TOWN || !inTown) return
         shuffling = true
         shuffleUsed.fill(false)
         e.clearTriggers()
@@ -273,11 +350,16 @@ object BootyIsland : Scene {
     /** What is playing now, for fades. */
     private val current: Int get() = when (here.song) { TOWN -> townSong; else -> here.song }
 
-    override fun playing(room: Room): Set<Int> = if (room.song == TOWN) setOf(TOWN, ALT) else setOf(room.song)
+    override fun playing(room: Room): Set<Int> = if (room.song == TOWN || room.song == MANSION) setOf(MANSION, TOWN, ALT) else setOf(room.song)
 
     override fun go(e: WoodtickEngine.Engine, from: Room, to: Room) {
         e.clearTriggers()       // [272]
         shuffling = false
+        when {
+            to.key == "entryway" -> return startMansion(e, to)
+            from.key == "entryway" -> return leaveMansion(e, to)
+            to.key == "map" || to.key == "grounds" || (from.key == "map" && to.key == "ville") -> return islandWalk(e, to)
+        }
         val old = current
         when {
             to.song == FUNERAL -> {

@@ -85,7 +85,14 @@ Global scripts 117 (`117(fromRoom, toRoom)`, the room-to-room music script) and 
   - the third time: swap to the alternate song 117 (not while the mix is 9 or 10, which keep walking). 117 starts at marker 2,
     118 stops at the next marker 5, and 117 hands back to a fresh 118 at its marker 3 (beat 144.4). The count restarts.
 - **Script 122** (the fast shuffle) applies a random mix from 1 to 5, not repeating within a cycle, every 360 jiffies (6 s).
-- The same director also runs in the mansion scenes and the island map, which are not scenes of the player.
+- **Island map and mansion.** Arriving at the map (script 116) keeps the island song if it is playing and arms its part hook 2
+  on part 0, otherwise starts it; the grounds change nothing (the island song carries on, or silence). The **entryway**
+  (entry script 224) starts the mansion's own song **114** and stops 115 at once. Script 120 plays 114 from its start the
+  first time (bit 764) and from a random beat 21-120 afterwards, queues the town song 118 on 114's marker 4 (beat 292.36,
+  four beats before its end), and stops 114 on marker 5 (296.4). From there the town song gets a random mix 1-3 and the walk,
+  the alternate song and the shuffle run exactly as in the shops. Leaving the entryway fades 114, 118 and 117 over 60 ticks
+  and starts nothing: the grounds are silent, and the map restarts 115. The player lets you pick a mix during 114 (the town
+  song starts with it) and has a button to skip to 114's last bars.
 - **Funeral parlor** has its own song **116**. Entering fades the music over a second while 116 starts. Leaving arms jump
   hook 1 on 116, waits for it to play out its ending, then the next room's song starts.
 - Part 9 of the funeral song is switched off only when a story flag (bit 90) is set; it is not in the player.
@@ -118,7 +125,7 @@ picture to the right of the swamp's, so the walk is one panorama of 1248 px.
 
 - Woodtick: the cartographer's first-visit variation (jump hook 3 and a part hook, gated on story flags); the inn's
   part 1 / part 3 morph (script 151) when walking to Largo's room.
-- Booty Island: the island map and the mansion, which use the same director with songs 114 and 115; the walk's `R` letter
+- Booty Island: the mansion's other rooms (the boudoir's cutscene songs 170 and 178, the kitchen's song 16, the kiosk); the walk's `R` letter
   (the town music dying out); the first-visit variations of the island theme (arming part hooks on arrival); Spitville's
   contest, which restarts the town song afterwards but changes no layers.
 - Swamp: the voodoo lady's first-visit cutscene (room 21 script 206), which has its own music.
